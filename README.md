@@ -1,5 +1,5 @@
 # Proyecto de UCOM 418 - Sistemas Operativos (Paralelo 81) 
-## Idea de Proyecto
+## Titulo de Proyecto
 Restaurante con Gestión de Pedidos
 ## Descripción
 Proyecto Final de la materia UCOM 418 - Sistemas Operativos (Paralelo 81)
