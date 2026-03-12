@@ -5,22 +5,29 @@ class SistemaRestaurante:
         self.ingredientes_disponibles = ingredientes_disponibles
         self.pedidos = Queue()
 
+    self.mutex_ingredientes = threading.Lock()
+    self.mutex_pedidos = threading.Lock()
+
     def agregar_pedido(self, pedido):
-        self.pedidos.put(pedido)
+        with self.mutex_pedidos:
+            self.pedidos.put(pedido)
+
         print("Pedido agregado:", pedido.producto.nombre)
     
     def procesar_pedido(self):
-        if self.pedidos.empty():
-            print("No hay pedidos")
-            return 
-        
-        pedido = self.pedidos.get()
+        with self.mutex_pedidos:  
+            if self.pedidos.empty():
+                print("No hay pedidos")
+                return 
+            
+            pedido = self.pedidos.get()
 
         ingredientes = pedido.producto.ingredientes_necesarios
 
-        if self.ingredientes_disponibles >= ingredientes:
-            self.ingredientes_disponibles -= ingredientes
-            pedido.estado = "Preparado"
-            print("Pedido preparado:", pedido.producto.nombre)
-        else:
-            print("No hay ingredientes suficientes")
+        with self.mutex_ingredientes:
+            if self.ingredientes_disponibles >= ingredientes:
+                self.ingredientes_disponibles -= ingredientes
+                pedido.estado = "Preparado"
+                print("Pedido preparado:", pedido.producto.nombre)
+            else:
+                print("No hay ingredientes suficientes")
