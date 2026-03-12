@@ -9,12 +9,14 @@ class SistemaRestaurante:
     self.mutex_pedidos = threading.Lock()
 
     def agregar_pedido(self, pedido):
+        # Mutex para pedidos
         with self.mutex_pedidos:
             self.pedidos.put(pedido)
 
         print("Pedido agregado:", pedido.producto.nombre)
     
     def procesar_pedido(self):
+        # Mutex de pedidos e ingredientes agregado.
         with self.mutex_pedidos:  
             if self.pedidos.empty():
                 print("No hay pedidos")
