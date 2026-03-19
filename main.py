@@ -18,9 +18,9 @@ def main():
     sistema.agregar_pedido(pedido2)
     sistema.agregar_pedido(pedido3)
 
-    hilo1 = threading.Thread(target=sistema.procesar_pedido)
-    hilo2 = threading.Thread(target=sistema.procesar_pedido)
-    hilo3 = threading.Thread(target=sistema.procesar_pedido)
+    hilo1 = threading.Thread(target=sistema.procesar_pedido, name="COCINERO 1")
+    hilo2 = threading.Thread(target=sistema.procesar_pedido, name="COCINERO 2")
+    hilo3 = threading.Thread(target=sistema.procesar_pedido, name="COCINERO 3")
 
     hilo1.start()
     hilo2.start()
@@ -30,4 +30,7 @@ def main():
     hilo2.join()
     hilo3.join()
 
-main()
+    print("Simulación finalizada.")
+
+if __name__ == "__main__":
+    main()
