@@ -1,4 +1,5 @@
 from queue import queue
+import threading
 from logRegistro import registrar_log
 class SistemaRestaurante:
     def_init_(self, ingredientes_disponibles):
