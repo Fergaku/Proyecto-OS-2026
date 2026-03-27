@@ -1,3 +1,5 @@
+from pedido import Pedido
+
 class Cliente:
 
     def __init__(self, id_cliente, nombre):

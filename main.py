@@ -2,6 +2,7 @@ import threading
 from class_SistemaRestaurante import SistemaRestaurante
 from cliente import Cliente
 from pedido import Pedido
+from producto import Producto
 
 def main():
     sistema = SistemaRestaurante(10)
