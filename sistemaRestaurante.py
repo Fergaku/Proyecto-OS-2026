@@ -3,7 +3,7 @@ import threading
 from logRegistro import registrar_log
 import time
 import random
-
+from cliente import Cliente
 class SistemaRestaurante:
     def __init__(self, ingredientes_disponibles):
         self.ingredientes_disponibles = ingredientes_disponibles
@@ -11,6 +11,7 @@ class SistemaRestaurante:
 
         self.mutex_ingredientes = threading.Lock()
         self.mutex_pedidos = threading.Lock()
+        self.contador_pedidos = 1
 
     def agregar_pedido(self, pedido):
         # Mutex para pedidos
@@ -19,6 +20,58 @@ class SistemaRestaurante:
             registrar_log("AGREGAR PEDIDO", pedido.producto.nombre, "ColaPedidos")
 
         print("Pedido agregado:", pedido.producto.nombre)
+        
+        
+    def obtener_pedidos(self, productos_disponibles):
+        pedidos = []
+        
+        print("\n¿Cuántos clientes desea agregar? ", end="")
+        try:
+            num_clientes = int(input())
+            if num_clientes <= 0:
+                print("Número inválido. usando 1 cliente.")
+                num_clientes = 1
+        except ValueError:
+            print("Entrada inválida. Usando 1 cliente.")
+            num_clientes = 1
+        
+        for i in range(num_clientes):
+            print(f"\n--- Cliente {i+1} ---")
+            print("Ingrese el nombre del cliente: ", end="")
+            nombre_cliente = input().strip()
+            if not nombre_cliente:
+                nombre_cliente = f"Cliente{i+1}"
+            
+            cliente = Cliente(i+1, nombre_cliente)
+            self.mostrar_menu_productos(productos_disponibles)
+            
+            while True:
+                print(f"Ingrese el ID del producto para {nombre_cliente} (0 para terminar): ", end="")
+                try:
+                    id_producto = int(input())
+                    if id_producto == 0:
+                        break
+                    if id_producto in productos_disponibles:
+                        producto = productos_disponibles[id_producto]
+                        pedido = cliente.crear_pedido(self.contador_pedidos, producto)
+                        pedidos.append(pedido)
+                        print(f"Pedido agregado: {producto.nombre}")
+                        self.contador_pedidos += 1
+                    else:
+                        print("ID de producto no válido. Intente de nuevo.")
+                except ValueError:
+                    print("Por favor, ingrese un número válido.")
+        
+        return pedidos
+        
+    
+    def mostrar_menu_productos(self, productos_disponibles):
+        print("\n" + "="*40)
+        print("MENÚ DE PRODUCTOS DISPONIBLES")
+        print("="*40)
+        for id_prod, producto in productos_disponibles.items():
+            print(f"{id_prod}. {producto.nombre} (Ingredientes necesarios: {producto.ingredientes_necesarios})")
+        print("="*40 + "\n")
     
     def procesar_pedido(self):
         while True:
