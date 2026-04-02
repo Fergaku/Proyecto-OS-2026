@@ -4,15 +4,20 @@ from logRegistro import registrar_log
 import time
 import random
 from cliente import Cliente
+from cocina import Cocina
 class SistemaRestaurante:
-    def __init__(self, ingredientes_disponibles):
+    def __init__(self, ingredientes_disponibles, num_utensilios=2):
         self.ingredientes_disponibles = ingredientes_disponibles
         self.ingredientes_iniciales = ingredientes_disponibles
         self.pedidos = Queue()
+        self.cocina = Cocina(num_utensilios)
 
         self.mutex_ingredientes = threading.Lock()
         self.mutex_pedidos = threading.Lock()
         self.contador_pedidos = 1
+        
+        self.mutex_cocina = threading.Lock()
+        self.utensilios_disponibles = num_utensilios
         
         self.mutex_output = threading.Lock()  # Para sincronizar prints
 
@@ -24,7 +29,20 @@ class SistemaRestaurante:
 
         print("Pedido agregado:", pedido.producto.nombre)
         
-        
+    # ===== METODOS PARA ACCEDER A RECURSO COMPARTIDO: COCINA =====
+    def solicitar_cocina(self, nCocinero):
+        with self.mutex_cocina:
+            while self.utensilios_disponibles <= 0:
+                pass
+            self.utensilios_disponibles -= 1
+            print(f"{nCocinero} esta usando la cocina (Utensilios disponibles) : {self.utensilios_disponibles}")
+            
+    def liberar_cocina(self, nCocinero):
+        with self.mutex_cocina:
+            self.utensilios_disponibles += 1
+            print(f"{nCocinero} libero la cocina (Utensilios disponibles) {self.utensilios_disponibles}")        
+    
+       
     def obtener_pedidos(self, productos_disponibles):
         pedidos = []
         
@@ -81,7 +99,7 @@ class SistemaRestaurante:
         nombre_cocinero = threading.current_thread().name
         
         while True:
-            # Mutex de pedidos e ingredientes agregado.
+            # Obtener pedido de la cola
             with self.mutex_pedidos:  
                 if self.pedidos.empty():
                     with self.mutex_output:
@@ -96,65 +114,54 @@ class SistemaRestaurante:
 
             ingredientes = pedido.producto.ingredientes_necesarios
 
+            # Verificar disponibilidad de ingredientes
             with self.mutex_ingredientes:
                 with self.mutex_output:
-                    registrar_log("ACCESO INGREDIENTES",f"{nombre_cocinero} - Disponible: {self.ingredientes_disponibles}, Necesarios: {ingredientes}","Ingredientes")
+                    registrar_log("ACCESO INGREDIENTES", 
+                                 f"{nombre_cocinero} - Disponible: {self.ingredientes_disponibles}, Necesarios: {ingredientes}",
+                                 "Ingredientes")
 
                 if self.ingredientes_disponibles >= ingredientes:
                     self.ingredientes_disponibles -= ingredientes
 
                     with self.mutex_output:
-                        registrar_log("ACTUALIZAR INGREDIENTES",f"{nombre_cocinero} - Restante: {self.ingredientes_disponibles}","Ingredientes")
-                        print(f"{nombre_cocinero}: preparando {pedido.producto.nombre}...")
+                        registrar_log("ACTUALIZAR INGREDIENTES",
+                                     f"{nombre_cocinero} - Restante: {self.ingredientes_disponibles}",
+                                     "Ingredientes")
+                        print(f"{nombre_cocinero}: esperando acceso a la cocina...")
+                    
+                    # ===== RECURSO COMPARTIDO: COCINA =====
+                    self.solicitar_cocina(nombre_cocinero)
+                    
+                    try:
+                        with self.mutex_output:
+                            print(f"{nombre_cocinero}: USANDO COCINA - preparando {pedido.producto.nombre}...")
+                            registrar_log("USANDO COCINA", 
+                                         f"{nombre_cocinero} está usando la cocina para {pedido.producto.nombre}",
+                                         "Cocina")
+                        
+                        # Simula tiempo de preparación en la cocina
+                        tiempo = random.randint(2, 4)
+                        time.sleep(tiempo)
 
-                    #Simula tiempo de preparación
-                    tiempo = random.randint(1,7)
-                    time.sleep(tiempo)
-
-                    pedido.estado = "Preparado"
-                    with self.mutex_output:
-                        registrar_log("PEDIDO PREPARADO", f"{nombre_cocinero} preparó {pedido.producto.nombre}", f"Pedido {pedido.id_pedido}")
-                        print(f"{nombre_cocinero}: finalizó Pedido {pedido.id_pedido}: {pedido.producto.nombre}")
+                        pedido.estado = "Preparado"
+                        with self.mutex_output:
+                            registrar_log("PEDIDO PREPARADO", 
+                                         f"{nombre_cocinero} preparó {pedido.producto.nombre}",
+                                         f"Pedido {pedido.id_pedido}")
+                            print(f"{nombre_cocinero}: finalizó Pedido {pedido.id_pedido}: {pedido.producto.nombre}")
+                    
+                    finally:
+                        # Siempre liberar la cocina, incluso si hay error
+                        self.liberar_cocina(nombre_cocinero)
+                    
+                    # ===== FIN RECURSO COMPARTIDO =====
+                    
                 else:
                     with self.mutex_output:
                         print(f"{nombre_cocinero}: No hay ingredientes suficientes para {pedido.producto.nombre}")
-                        registrar_log("FALTA INGREDIENTES", f"{nombre_cocinero} - {pedido.producto.nombre}", f"Pedido {pedido.id_pedido}")
+                        registrar_log("FALTA INGREDIENTES", 
+                                     f"{nombre_cocinero} - {pedido.producto.nombre}",
+                                     f"Pedido {pedido.id_pedido}")
             print("\n")
-        
-        """
-                
-        nombre_cocinero = threading.current_thread().name
-
-        while True:
-            # Mutex de pedidos e ingredientes agregado.
-            with self.mutex_pedidos:  
-                if self.pedidos.empty():
-                    print("No hay pedidos")
-                    registrar_log("SIN PEDIDOS", "Cola vacia", "ColaPedidos")
-                    break
-                
-                pedido = self.pedidos.get()
-                registrar_log("TOMAR PEDIDO", f"Pedido {pedido.id_pedido}", "ColaPedidos")
-
-            ingredientes = pedido.producto.ingredientes_necesarios
-
-            with self.mutex_ingredientes:
-                registrar_log("ACCESO INGREDIENTES",f"Disponible: {self.ingredientes_disponibles}, Necesarios: {ingredientes}","Ingredientes")
-
-                if self.ingredientes_disponibles >= ingredientes:
-                    self.ingredientes_disponibles -= ingredientes
-
-                    registrar_log("ACTUALIZAR INGREDIENTES",f"Restante: {self.ingredientes_disponibles}","Ingredientes")
-
-                    #Simula tiempo de preparación
-                    tiempo = random.randint(1,5)
-                    time.sleep(tiempo)
-
-                    pedido.estado = "Preparado"
-                    registrar_log("PEDIDO PREPARADO", pedido.producto.nombre, f"Pedido {pedido.id_pedido}")
-                    print("Pedido preparado:", pedido.producto.nombre)
-                else:
-                    print("No hay ingredientes suficientes")
-                    registrar_log("FALTA INGREDIENTES", pedido.producto.nombre, f"Pedido {pedido.id_pedido}")
-        
-        """
+ 
